@@ -44,7 +44,8 @@ Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map,Rhizo.tax)
 # Always set seed before using random numbers (like in permuations)
 set.seed(743)
 
-m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction + accession, nperm = 100)
+m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction + accession,
+    nperm = 100)
 
 # See distribution of pvalues behaves as expectee
 hist(m1$p.values)
