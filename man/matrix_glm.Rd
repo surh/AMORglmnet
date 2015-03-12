@@ -56,7 +56,8 @@ m1[ m1$Variable == "accessionLer" & m1$p.value < 0.1, ]
 #plot one of them
 p1 <- plotgg_taxon(Dat, taxon = "OTU_2324", x = "accession")
 dat <- data.frame(accession = levels(p1$data$accession),
-                  value = tapply(p1$data$Abundance,p1$data$accession,mean),
+                  value = tapply(p1$data$Abundance,
+                      p1$data$accession,mean),
                   Group = "Presence")
 dat <- rbind(dat,
              data.frame(accession = levels(p1$data$accession), 
@@ -71,7 +72,8 @@ ggplot(dat,aes(x = accession, y = value, fill = Group)) +
 m1[ m1$Variable == "fractionE" & m1$p.value < 0.01 & m1$Estimate < -3, ]
 p1 <- plotgg_taxon(Dat, taxon = "OTU_16757", x = "fraction")
 dat <- data.frame(fraction = levels(p1$data$fraction),
-                  value = tapply(p1$data$Abundance,p1$data$fraction,mean),
+                  value = tapply(p1$data$Abundance,
+                      p1$data$fraction,mean),
                   Group = "Presence")
 dat <- rbind(dat,
              data.frame(fraction = levels(p1$data$fraction), 
