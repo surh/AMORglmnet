@@ -74,24 +74,3 @@ matrix_glmnet <- function(Dat, formula, family = "binomial", alpha = 0,
 }
 
 
-
-library(AMOR)
-library(glmnet)
-
-data(Rhizo)
-data(Rhizo.map)
-data(Rhizo.tax)
-
-Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map,Rhizo.tax)
-set.seed(743)
-m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction + accession, nperm = 100)
-
-
-
-
-
-
-
-
-
-
