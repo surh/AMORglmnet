@@ -16,7 +16,7 @@
 #' function to obtain a valid design matrix.
 #' @param formula Right hand side of the formula to be used for the model.
 #' Variable names must correspond to header names in Map portion of the Dataset object.
-#' Ignored if X is passed.
+#' Ignored if X is passed. Note that offset is not supported.
 #' @param family The model family to be used. See \link{glmnet} for more help.
 #' @param alpha The elastic net parameter. 1 corresponds ot Lasso and 0 to Ridge,
 #' with intermediate values cirrespondig to mixtures between the two.
@@ -35,6 +35,7 @@
 #' plotting null distributions of parameters and observed values.
 #' Might eventually be an independent function.
 #' @param theme ggplot2 theme for plots.
+#' @param verbose Logical indicating if progress should be printed
 #' 
 #' @return
 #' \item{Variable}{Variable name.}
@@ -97,7 +98,7 @@
 #'   theme_blackbox
 matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", alpha = 0,
                           glmnet.intercept = TRUE, glmnet.offset = NULL,
-                          nperm = 1000, plot = FALSE, theme = theme_blackbox){
+                          nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE){
   
 #   data(Rhizo.map)
 #   data(Rhizo)
@@ -159,7 +160,7 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   for(otu in row.names(Dat$Tab)){
     #otu <- row.names(Dat$Tab)[1]
     #otu <- "OTU_16233"
-    cat(otu,"\n")
+    if(verbose) cat(otu,"\n")
     
     # Get data and perform cross-validationto chose lambda
     Y <- Dat$Tab[otu,]

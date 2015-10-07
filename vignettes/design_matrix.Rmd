@@ -1,0 +1,49 @@
+---
+title: "Specifying your design matrix"
+author: "Sur Herrera Paredes"
+date: "7 de octubre de 2015"
+output: html_document
+---
+
+This document describes the basic process for generating a design matrix and passing it to `matrix_glmnet()` to fit a ridge regression model.
+
+The first thing to do is to load the AMORglmnet package and load the data. 
+
+```{r load_data}
+library(AMORglmnet)
+
+data(Rhizo)
+data(Rhizo.map)
+Dat <- create_dataset(Rhizo,Rhizo.map)
+```
+
+This dataset abundances for `r nrow(Dat$Tab)` bacterial OTUs for `r ncol(Dat$Tab)` samples. The samples are a combination of bulk soil samples, as well as rhizosphere and root endophytic compartment from two accessions of the plant *Arabidopsis thaliana*. We are interested in modeling the effect of fraction (soil, rhizosphere [R] and endophytic compartment [EC]) as well as plant accession (Ler and Col), and their interaction. There is also a sequencing plate variable that will be ignored.
+
+The first thing to note is that the sampling depth differs for each sample, so we must calculate the sampling depth for each variable in order to correctly control for it during the modeling. We can calculate and store this value directly with the following:
+
+```{r get_depht}
+Dat$Map$depth <- log(colSums(Dat$Tab))
+summary(Dat$Map$depth)
+```
+
+Note that we take the logarithm of depth because the poisson model that we will use uses a log link function.
+
+## Using the formula interface
+
+The simplest way to make a model is to use R's formula interface. Most R linear modeling functions use a function called `model.matrix()` to generate a design matrix that then goes into the fitted model. However, this function generates a design matrix where estimability constraints are imposes, meaning that coefficients that cannot be estimated due to linear dependencies are simply removed from the desing matrix. While this is good for the majority of models, it would eliminate one of the advantages of regularized models that can deal with overparametrized models. Because of this, `matrix_glmnet()` uses another function that generates the full overparametrized design matrix (more below).
+
+Knowing all this we can simply write a simple formula for our case and run the following model:
+
+```{r model_formula1}
+# Always set seed before using random numbers (like in permuations)
+set.seed(743)
+m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction * accession,
+                    nperm = 10, glmnet.offset = "depth", family = "poisson",
+                    verbose = FALSE)
+```
+
+The previous line fits a model with terms for fraction, accession and their interaction, and performs hypothesis testing via permutation for each coefficient. We've set the number of permutations `nperm` to a 100 so it runs fast, and we've set the offset to the variable thad we had defined before with `glmnet.offset = "depth"` to account for variable sequencing depth. We've also set family to `family = "poisson"` and suppressed the progress output which shows up by default with `verbose = FALSE`.
+
+
+
+

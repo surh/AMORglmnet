@@ -6,7 +6,7 @@
 \usage{
 matrix_glmnet(Dat, X = NULL, formula = NULL, family = "binomial",
   alpha = 0, glmnet.intercept = TRUE, glmnet.offset = NULL,
-  nperm = 1000, plot = FALSE, theme = theme_blackbox)
+  nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE)
 }
 \arguments{
 \item{Dat}{A Dataset object.}
@@ -17,7 +17,7 @@ function to obtain a valid design matrix.}
 
 \item{formula}{Right hand side of the formula to be used for the model.
 Variable names must correspond to header names in Map portion of the Dataset object.
-Ignored if X is passed.}
+Ignored if X is passed. Note that offset is not supported.}
 
 \item{family}{The model family to be used. See \link{glmnet} for more help.}
 
@@ -43,6 +43,8 @@ plotting null distributions of parameters and observed values.
 Might eventually be an independent function.}
 
 \item{theme}{ggplot2 theme for plots.}
+
+\item{verbose}{Logical indicating if progress should be printed}
 }
 \value{
 \item{Variable}{Variable name.}
