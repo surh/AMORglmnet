@@ -1,14 +1,14 @@
-#' Fit  a glmnet model on Dataset object
-#' 
-#' @alias matrix_glmnet
+#' Fit  a glmnet model on Dataset object.
 #' 
 #' This function takes a Dataset object and fits the specified
 #' glmnet model on each taxon. righn now only alpha = 0 (ie. ridge regularization)
 #' is supported. The function uses 10-fold cross-validation to select lambda, and
-#' permutation to obtain p-vzalues.
+#' permutation to obtain p-values.
 #' 
 #' Uses \link{cv.glmnet} with 10-fold cross-validation to pick the optiomal
 #' lambda value and then uses \link{glmnet} to fit each permuted dataset.
+#' 
+#' @aliases matrix_glmnet
 #' 
 #' @param Dat A Dataset object.
 #' @param formula Right hand side of the formula to be used for the model.
@@ -24,7 +24,7 @@
 #' Might eventually be an independent function.
 #' @param theme ggplot2 theme for plots.
 #' 
-#' @returns
+#' @return
 #' \item{Variable}{Variable name.}
 #' \item{Taxon}{Taxon for which the model was fit.}
 #' \item{Estimate}{Coefficient value estimate.}
@@ -33,7 +33,7 @@
 #' 
 #' @author Sur from Dangl Lab
 #' 
-#' @examples examples
+#' @examples
 #' data(Rhizo)
 #' data(Rhizo.map)
 #' data(Rhizo.tax)

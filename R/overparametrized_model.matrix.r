@@ -1,11 +1,26 @@
-#' Obtain overparametrized model matrix
+#' Obtain overparametrized design matrix
+#' 
+#' This functions takes a formula and data frame and creates a design
+#' matrix that has a column for every level of every factor.
+#' 
+#' @param formula Righ hand side of formula for which a design matrix is desired.
+#' @param data \code{data.frame} containing the variables used in the formula
+#' @param remove.constant Logical indicating whether columns that never vary should be removed.
+#' Most commonly these are due to specific combinations of factors that never happen on the
+#' dataset.
+#' @param intercept Logical indicating whether or not to add an intercept
+#' 
+#' @author Sur from Dangl lab
+#' 
+#' @examples
+#' data(Rhizo.map)
+#' 
+#' X <- overparametrized_model.matrix(~ fraction * accession,
+#'                                    data = Rhizo.map)
+#' image(X)
 overparametrized_model.matrix <- function(formula, data, remove.constant = TRUE,
                                           intercept = TRUE){
-  formula <- ~ fraction * accession
-  data <- Dat$Map
-  intercept <- TRUE
-  remove.constant <- TRUE
-  
+
   # Extract all terms from formula
   f1.terms <- terms(formula,data = data)
   term.labels <- attr(x = f1.terms,which = "term.labels")
@@ -17,7 +32,7 @@ overparametrized_model.matrix <- function(formula, data, remove.constant = TRUE,
                 f1 <- formula(f1)
                 X <- model.matrix(f1, data = data)
                 return(X)},
-              data = Dat$Map)
+              data = data)
   
   # Merge matrix into one
   X <- do.call(what = cbind, args = X)

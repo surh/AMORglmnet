@@ -46,7 +46,6 @@ Uses \link{cv.glmnet} with 10-fold cross-validation to pick the optiomal
 lambda value and then uses \link{glmnet} to fit each permuted dataset.
 }
 \examples{
-examples
 data(Rhizo)
 data(Rhizo.map)
 data(Rhizo.tax)
