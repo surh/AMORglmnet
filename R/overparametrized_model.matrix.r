@@ -50,9 +50,3 @@ overparametrized_model.matrix <- function(formula, data, remove.constant = TRUE,
   
   return(X)
 }
-
-# data(Rhizo.map)
-# formula <- ~ fraction
-# data <- Rhizo.map
-# remove.constant <- TRUE
-# head( overparametrized_model.matrix(formula = formula, data = Rhizo.map))

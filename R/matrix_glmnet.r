@@ -11,13 +11,25 @@
 #' @aliases matrix_glmnet
 #' 
 #' @param Dat A Dataset object.
+#' @param X A numeric matrix to be used as desing matrix for the model. If missing,
+#' the script will use the formula interface with the \link{overparametrized_model.matrix}
+#' function to obtain a valid design matrix.
 #' @param formula Right hand side of the formula to be used for the model.
 #' Variable names must correspond to header names in Map portion of the Dataset object.
+#' Ignored if X is passed.
 #' @param family The model family to be used. See \link{glmnet} for more help.
 #' @param alpha The elastic net parameter. 1 corresponds ot Lasso and 0 to Ridge,
 #' with intermediate values cirrespondig to mixtures between the two.
 #' This function only supports 0 for the moment and will use that value regardless
 #' of what the user supplies.
+#' @param glmnet.intercept Logical indicating whether to add an intercept. See intercept
+#' option in \link{glmnet}
+#' @param glmnet.offset Either a character indicating the name of the variable to be used
+#' as offset; or a numeric vector of length equal to the number of samples to be used
+#' directly as offset, see offset option in \link{glmnet}.
+#' Note that family multinomial takes a matrix as offset, while passing a vector of
+#' variable names should work, note that this has not been tested and might produce
+#' incorrect results. The function will print a warning if you try to do this.
 #' @param nperm Number of permutations to perfomr.
 #' @param plot Currently not implemented. The funciton contains code for
 #' plotting null distributions of parameters and observed values.
@@ -83,17 +95,25 @@
 #'   geom_bar(stat = "identity", position = "fill") +
 #'   scale_fill_manual(values = c("black","white")) +
 #'   theme_blackbox
-matrix_glmnet <- function(Dat, formula, family = "binomial", alpha = 0,
+matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", alpha = 0,
+                          glmnet.intercept = TRUE, glmnet.offset = NULL,
                           nperm = 1000, plot = FALSE, theme = theme_blackbox){
   
-#   formula <- ~ FRACTION
-#   Dat <- Dat.bin
+#   data(Rhizo.map)
+#   data(Rhizo)
+#   Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map)
+#   Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
+#   formula <- ~ fraction
 #   family <- "binomial"
 #   alpha <- 0
 #   nperm <- 10
 #   plot <- FALSE
 #   theme <- theme_blackbox
+#   X <- NULL
+#   glmnet.intercept <- TRUE
+#   glmnet.offset <- Dat$Map$rich
   
+  # Checking user parameters
   if(alpha != 0){
     alpha <- 0
     warning("WARNING: only alpha = 0  supported. Setting alpha to zero",call. = TRUE)
@@ -103,8 +123,37 @@ matrix_glmnet <- function(Dat, formula, family = "binomial", alpha = 0,
     warning("WARNING: plot not fully implemented. Setting plot to FALSE,", call. = TRUE)
   }
   
-  formula <- update(formula, ~ . + -1)
-  X <- model.matrix(formula, data = Dat$Map)
+  if(is.null(X) && is.null(formula)){
+    stop("ERROR: One of X and formula must be not null\n",call. = TRUE)
+  }
+  
+  # If we get a character we assume it is the name of a variable in map
+  # If it is numeric we check the length and if it matches number of samples
+  # we use it as offset.
+  # Else we send error.
+  # Add a warning for multinomial classes
+  if(!is.null(glmnet.offset)){
+    if(family == "multinomial"){
+      warning("WARNING: Use of offset with multinomial class has not been tested in this function",
+              call. = TRUE)
+    }
+    if(is.character(glmnet.offset)){
+      glmnet.offset <- Dat$Map[ ,glmnet.offset ]
+    }else if(is.numeric(glmnet.offset) && length(glmnet.offset) == ncol(Dat$Tab)){
+      glmnet.offset <- glmnet.offset
+    }else{
+      stop("ERROR: invalid glmnet.offset", call. = TRUE)
+    }
+  }
+  
+  # If not matrix passed, obtain matrix with formula, otherwise check matrix
+  if(is.null(X)){
+    X <- overparametrized_model.matrix(formula = formula, data = Dat$Map,
+                                       remove.constant = TRUE, intercept = FALSE)
+  }else if(!(is.matrix(X) && is.numeric(X))){
+    stop("ERROR: Invalid desgin matrix",call. = TRUE)
+  }
+  
   
   RES <- NULL
   for(otu in row.names(Dat$Tab)){
@@ -114,10 +163,11 @@ matrix_glmnet <- function(Dat, formula, family = "binomial", alpha = 0,
     
     # Get data and perform cross-validationto chose lambda
     Y <- Dat$Tab[otu,]
-    m1 <- cv.glmnet(x = X, y = Y, family = family, alpha = alpha, type.measure = "deviance")
+    m1 <- cv.glmnet(x = X, y = Y, family = family, alpha = alpha, type.measure = "deviance",
+                    intercept = glmnet.intercept, offset = glmnet.offset)
     lambda <- m1$lambda.min
     coef <- coef(m1, s = "lambda.min")
-    
+
     # Permute and refit teh model to obtain NULL
     PERMS <- matrix(NA, nrow = nrow(coef), ncol = nperm)
     row.names(PERMS) <- row.names(coef)
@@ -125,7 +175,8 @@ matrix_glmnet <- function(Dat, formula, family = "binomial", alpha = 0,
       #i <- 1
       
       Y.perm <- sample(Y)
-      m2 <- glmnet(x = X, y = Y.perm, family = family, lambda = lambda, alpha = alpha)
+      m2 <- glmnet(x = X, y = Y.perm, family = family, lambda = lambda, alpha = alpha,
+                   intercept = glmnet.intercept, offset = glmnet.offset)
       coef.perm <- coef(m2)
       PERMS[,i] <- coef.perm[,1]
     }

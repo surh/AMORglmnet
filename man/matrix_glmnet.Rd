@@ -4,14 +4,20 @@
 \alias{matrix_glmnet}
 \title{Fit  a glmnet model on Dataset object.}
 \usage{
-matrix_glmnet(Dat, formula, family = "binomial", alpha = 0, nperm = 1000,
-  plot = FALSE, theme = theme_blackbox)
+matrix_glmnet(Dat, X = NULL, formula = NULL, family = "binomial",
+  alpha = 0, glmnet.intercept = TRUE, glmnet.offset = NULL,
+  nperm = 1000, plot = FALSE, theme = theme_blackbox)
 }
 \arguments{
 \item{Dat}{A Dataset object.}
 
+\item{X}{A numeric matrix to be used as desing matrix for the model. If missing,
+the script will use the formula interface with the \link{overparametrized_model.matrix}
+function to obtain a valid design matrix.}
+
 \item{formula}{Right hand side of the formula to be used for the model.
-Variable names must correspond to header names in Map portion of the Dataset object.}
+Variable names must correspond to header names in Map portion of the Dataset object.
+Ignored if X is passed.}
 
 \item{family}{The model family to be used. See \link{glmnet} for more help.}
 
@@ -19,6 +25,16 @@ Variable names must correspond to header names in Map portion of the Dataset obj
 with intermediate values cirrespondig to mixtures between the two.
 This function only supports 0 for the moment and will use that value regardless
 of what the user supplies.}
+
+\item{glmnet.intercept}{Logical indicating whether to add an intercept. See intercept
+option in \link{glmnet}}
+
+\item{glmnet.offset}{Either a character indicating the name of the variable to be used
+as offset; or a numeric vector of length equal to the number of samples to be used
+directly as offset, see offset option in \link{glmnet}.
+Note that family multinomial takes a matrix as offset, while passing a vector of
+variable names should work, note that this has not been tested and might produce
+incorrect results. The function will print a warning if you try to do this.}
 
 \item{nperm}{Number of permutations to perfomr.}
 
