@@ -44,6 +44,56 @@ m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction * accession,
 
 The previous line fits a model with terms for fraction, accession and their interaction, and performs hypothesis testing via permutation for each coefficient. We've set the number of permutations `nperm` to a 100 so it runs fast, and we've set the offset to the variable thad we had defined before with `glmnet.offset = "depth"` to account for variable sequencing depth. We've also set family to `family = "poisson"` and suppressed the progress output which shows up by default with `verbose = FALSE`.
 
+It is also important to remember that there are two steps that introduce randomness in the `matrix_glmnet()` function, one is the 10-fold cross-validation that help us pick lambda, and the second is the permutation test. So we must always use `set.seed()` before to ensure reproducible results.
+
+We can then look at the model results for one OTU with:
+
+```{r model_results1}
+m1[ m1$Taxon == "OTU_2324", ]
+```
+According to the model, there is a significant enrichment of this OTU in the root endophytic compartment of Col plants. Note that we haven't shown that this model is neccessarily appropriate here, nor will we. We will instead focus on the coefficient interpretation.
+
+A careful look a the cofficients, will show that there are three variables that are identical: "fractionSoil", "accessionSoil" and "fractionSoil:accessionSoil" are all identical (meaning that the set of samples belonging to each of those class are exactly the same). When ridge regression models encounter variables that are highly correlated, they thry to evenly split the effect among all of them, which is why those three variables have very similar estimates. Unfortunately, this also means that if we want to know the true effect of soil, we need to add all three numbers together, which is not very convenient.
+
+It is also not clear that having a soil variable is such a good idea. The way it is, the fraction coefficients are the deviation of samples of a given type compared with the average sample, but Soil samples are independent from plants, wouldn't it be more biologically meaningfu l to have a model with soil as a baseline, and with fraction coefficients giving the deviation of each fraction from soil?.
+
+Unfortunately the formula interface doesn't allow us to easily change the model, and this type of problem happens when you have variables that are not completely crossed. Luckily, we can pass our custom desgin matrix as well.
+
+## Using a custom design matrix
+
+```{r full_matrix}
+X <- overparametrized_model.matrix(~ fraction * accession, data = Dat$Map, intercept = FALSE)
+colnames(X)
+```
+
+```{r remove_soils}
+X <- X[,-c(1,6,11)]
+colnames(X)
+```
+
+```{r model_custom1}
+set.seed(743)
+m2 <- matrix_glmnet(Dat = Dat, X = X,
+                    nperm = 10, glmnet.offset = "depth", family = "poisson",
+                    verbose = FALSE)
+```
+
+```{r model_results2}
+m2[ m2$Taxon == "OTU_2324", ]
+```
 
 
+```{r test}
+Tab.norm <- 100*scale(Dat$Tab,center = FALSE, scale = colSums(Dat$Tab))
+Dat.norm <- create_dataset(Tab.norm, Dat$Map)
 
+otus <- unique(m2$Taxon)
+i <- 3
+i <- which(otus == "OTU_18380")
+m1[ m1$Taxon == otus[i], ]
+m2[ m2$Taxon == otus[i], ]
+plotgg_taxon(Dat.norm, taxon = otus[i], x = "fraction", col = "accession") + scale_y_sqrt()
+``
+
+
+m2[ m2$p.value <= 0.1,]
