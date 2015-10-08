@@ -100,19 +100,20 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
                           glmnet.intercept = TRUE, glmnet.offset = NULL,
                           nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE){
   
-#   data(Rhizo.map)
-#   data(Rhizo)
-#   Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map)
-#   Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
-#   formula <- ~ fraction
-#   family <- "binomial"
-#   alpha <- 0
-#   nperm <- 10
-#   plot <- FALSE
-#   theme <- theme_blackbox
-#   X <- NULL
-#   glmnet.intercept <- TRUE
-#   glmnet.offset <- Dat$Map$rich
+  data(Rhizo.map)
+  data(Rhizo)
+  Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map)
+  Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
+  formula <- ~ fraction
+  family <- "binomial"
+  alpha <- 0
+  nperm <- 10
+  plot <- FALSE
+  theme <- theme_blackbox
+  X <- NULL
+  glmnet.intercept <- TRUE
+  glmnet.offset <- Dat$Map$rich
+  set.seed(124)
   
   # Checking user parameters
   if(alpha != 0){
@@ -154,6 +155,14 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   }else if(!(is.matrix(X) && is.numeric(X))){
     stop("ERROR: Invalid desgin matrix",call. = TRUE)
   }
+  
+  
+  sample(1:ncol(Dat$Tab),replace = FALSE)
+  
+  
+ 
+  
+
   
   
   RES <- NULL
