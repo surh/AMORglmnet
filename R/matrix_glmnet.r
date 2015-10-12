@@ -179,28 +179,39 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     true.coefs <- cbind(true.coefs,as.matrix(coef))
   }
   
+  sample.replace <- FALSE
+  
   RES <- NULL
+  
+  
+  REPS <- matrix(NA, nrow = nrow(true.coefs), ncol = nperm)
+  row.names(REPS) <- row.names(coef)
+  
   cat("Performing permutations...\n")
-  for(otu in row.names(Dat$Tab)){
-    otu <- row.names(Dat$Tab)[1]
-    #otu <- "OTU_16233"
-    if(verbose) cat(otu,"\n")
+  for(i in 1:nperms){
+    i <- 1
     
-    # Get data
-    Y <- Dat$Tab[otu,]
-
-    # Permute and refit teh model to obtain NULL
-    PERMS <- matrix(NA, nrow = nrow(true.coefs), ncol = nperm)
-    row.names(PERMS) <- row.names(coef)
-    for(i in 1:nperm){
-      #i <- 1
+    # Get permuted index
+    Y.perm.index <- sample(ncol(Dat$Tab),replace = sample.replace)
+    
+    for(otu in row.names(Dat$Tab)){
+      otu <- row.names(Dat$Tab)[1]
+      #otu <- "OTU_16233"
+      #if(verbose) cat(otu,"\n")
+    
+      # Get data, permute and refit the model to obtain null
+      Y <- Dat$Tab[otu,]
+      Y.perm <- Y[ Y.perm.index ]
+      m2 <- glmnet(x = X, y = Y.perm, family = family, lambda = lambda.otu[otu],
+                   alpha = alpha,intercept = glmnet.intercept, offset = glmnet.offset)
       
-      Y.perm <- sample(Y)
-      m2 <- glmnet(x = X, y = Y.perm, family = family, lambda = lambda, alpha = alpha,
-                   intercept = glmnet.intercept, offset = glmnet.offset)
+      # Store permutation results
       coef.perm <- coef(m2)
-      PERMS[,i] <- coef.perm[,1]
-    }
+      REPS[,i] <- coef.perm[,1]
+      }
+    
+  }
+  
     
     # FOR THE FUTURE NOT SUPPORTED NOW.
     if(plot){
@@ -221,7 +232,7 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     }
     
     # Get p-values and update results
-    pvals <- rowSums(abs(coef[,1] / PERMS) < 1) / nperm
+    pvals <- rowSums(abs(true.coefs[,otu] / PERMS) < 1) / nperm
     Res <- data.frame(Variable = row.names(coef), Taxon = otu, Estimate = coef[,1],
                       p.value = pvals,row.names = NULL, lambda = lambda)
     RES <- rbind(RES,Res)
