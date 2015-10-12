@@ -220,31 +220,13 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     #p1
   }
   
-  # Format output and calculate p-values
-  RES <- melt(data = true.coefs, varnames = c("Variable","Taxon"),value.name = "Estimate")
-  if(method == "permutation"){
-    RES$p.value <- NA
-    RES$lambda <- NA
-    for(otu in row.names(Dat$Tab)){
-      pvals <- rowSums(abs(true.coefs[,otu] / REPS[[otu]]) <= 1) / nperm
-      RES$p.value[ RES$Taxon == otu ] <- pvals
-      RES$lambda[ RES$Taxon == otu ] <- lambda.otu[otu]
-    } 
-  }else if(method == "bootstrap"){
-    Res <- NULL
-    for(otu in row.names(Dat$Tab)){
-      quants <- apply(REPS[[otu]],1,quantile,probs = quantile.probs)
-      quants <- as.data.frame(t(quants))
-      quants$lambda <- lambda.otu[otu]
-      #quants$otu  <- otu
-      
-      Res <- rbind(Res,quants)
-    }
-    RES <- cbind(RES,Res)
-  }
-  
-  # Finish
+  # Format output
+  RES <- list(X = X, coefficients = true.coefs, lambda = lambda.otu,
+                    method = method, family = family, nreps = nperm,
+                    call = match.call(),formula = formula, samples = REPS)
+  class(RES) <- "matrix.glmnet"
   return(RES)
+
 }
 
 
