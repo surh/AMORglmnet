@@ -100,23 +100,23 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
                           glmnet.intercept = TRUE, glmnet.offset = NULL,
                           nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE){
   
-  library(AMORglmnet)
-  data(Rhizo.map)
-  data(Rhizo)
+  #library(AMORglmnet)
+  #data(Rhizo.map)
+  #data(Rhizo)
   #Dat <- create_dataset(((Rhizo > 0)*1)[1:10,],Rhizo.map)
-  Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
-  Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
-  formula <- ~ fraction
-  family <- "poisson"
-  alpha <- 0
-  nperm <- 10
-  plot <- FALSE
-  theme <- theme_blackbox
-  X <- NULL
-  glmnet.intercept <- TRUE
-  glmnet.offset <- Dat$Map$rich
-  verbose <- TRUE
-  set.seed(124)
+  #Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
+  #Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
+  #formula <- ~ fraction
+  #family <- "poisson"
+  #alpha <- 0
+  #nperm <- 10
+  #plot <- FALSE
+  #theme <- theme_blackbox
+  #X <- NULL
+  #glmnet.intercept <- TRUE
+  #glmnet.offset <- Dat$Map$rich
+  #verbose <- TRUE
+  #set.seed(124)
   
   # Checking user parameters
   if(alpha != 0){
@@ -223,13 +223,16 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
       geom_vline(data = subset(dat, Type == "Estimate"), aes(xintercept = Estimate), col = "red") +
       theme
     #p1
-    }
-    
-    # Get p-values and update results
-    pvals <- rowSums(abs(true.coefs[,otu] / PERMS) < 1) / nperm
-    Res <- data.frame(Variable = row.names(coef), Taxon = otu, Estimate = coef[,1],
-                      p.value = pvals,row.names = NULL, lambda = lambda)
-    RES <- rbind(RES,Res)
+  }
+  
+  # Formate output and calculate p-values
+  RES <- melt(data = true.coefs, varnames = c("Variable","Taxon"),value.name = "Estimate")
+  RES$p.value <- NA
+  RES$lambda <- NA
+  for(otu in row.names(Dat$Tab)){
+    pvals <- rowSums(abs(true.coefs[,otu] / REPS[[otu]]) <= 1) / nperm
+    RES$p.value[ RES$Taxon == otu ] <- pvals
+    RES$lambda[ RES$Taxon == otu ] <- lambda.otu[otu]
   }
   
   # Finish
