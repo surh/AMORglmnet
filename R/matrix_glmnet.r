@@ -100,9 +100,10 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
                           glmnet.intercept = TRUE, glmnet.offset = NULL,
                           nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE){
   
+  library(AMORglmnet)
   data(Rhizo.map)
   data(Rhizo)
-  Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map)
+  Dat <- create_dataset(((Rhizo > 0)*1)[1:10,],Rhizo.map)
   Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
   formula <- ~ fraction
   family <- "binomial"
@@ -113,6 +114,7 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   X <- NULL
   glmnet.intercept <- TRUE
   glmnet.offset <- Dat$Map$rich
+  verbose <- TRUE
   set.seed(124)
   
   # Checking user parameters
@@ -156,19 +158,12 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     stop("ERROR: Invalid desgin matrix",call. = TRUE)
   }
   
-  
-  sample(1:ncol(Dat$Tab),replace = FALSE)
-  
-  
- 
-  
-
-  
-  
-  RES <- NULL
+  true.coefs <- NULL
+  lambda.otu <- NULL
+  cat("Estimating lambda...\n")
   for(otu in row.names(Dat$Tab)){
     #otu <- row.names(Dat$Tab)[1]
-    #otu <- "OTU_16233"
+    
     if(verbose) cat(otu,"\n")
     
     # Get data and perform cross-validationto chose lambda
@@ -177,9 +172,25 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
                     intercept = glmnet.intercept, offset = glmnet.offset)
     lambda <- m1$lambda.min
     coef <- coef(m1, s = "lambda.min")
+    
+    names(lambda) <- otu
+    colnames(coef) <- otu
+    lambda.otu <- c(lambda.otu,lambda)
+    true.coefs <- cbind(true.coefs,as.matrix(coef))
+  }
+  
+  RES <- NULL
+  cat("Performing permutations...\n")
+  for(otu in row.names(Dat$Tab)){
+    otu <- row.names(Dat$Tab)[1]
+    #otu <- "OTU_16233"
+    if(verbose) cat(otu,"\n")
+    
+    # Get data
+    Y <- Dat$Tab[otu,]
 
     # Permute and refit teh model to obtain NULL
-    PERMS <- matrix(NA, nrow = nrow(coef), ncol = nperm)
+    PERMS <- matrix(NA, nrow = nrow(true.coefs), ncol = nperm)
     row.names(PERMS) <- row.names(coef)
     for(i in 1:nperm){
       #i <- 1
