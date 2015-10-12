@@ -1,7 +1,8 @@
+%\VignetteEngine{knitr::knitr}
 ---
 title: "Specifying your design matrix"
 author: "Sur Herrera Paredes"
-date: "7 de octubre de 2015"
+date: "12 de octubre de 2015"
 output: html_document
 ---
 
@@ -14,23 +15,14 @@ library(AMORglmnet)
 
 data(Rhizo)
 data(Rhizo.map)
-Dat <- create_dataset(Rhizo,Rhizo.map)
+Dat <- create_dataset(Rhizo[1:20,],Rhizo.map)
 ```
 
-This dataset abundances for `r nrow(Dat$Tab)` bacterial OTUs for `r ncol(Dat$Tab)` samples. The samples are a combination of bulk soil samples, as well as rhizosphere and root endophytic compartment from two accessions of the plant *Arabidopsis thaliana*. We are interested in modeling the effect of fraction (soil, rhizosphere [R] and endophytic compartment [EC]) as well as plant accession (Ler and Col), and their interaction. There is also a sequencing plate variable that will be ignored.
-
-The first thing to note is that the sampling depth differs for each sample, so we must calculate the sampling depth for each variable in order to correctly control for it during the modeling. We can calculate and store this value directly with the following:
-
-```{r get_depht}
-Dat$Map$depth <- log(colSums(Dat$Tab))
-summary(Dat$Map$depth)
-```
-
-Note that we take the logarithm of depth because the poisson model that we will use uses a log link function.
+This dataset abundances for the first 20 bacterial OTUs for `r ncol(Dat$Tab)` samples. The samples are a combination of bulk soil samples, as well as rhizosphere and root endophytic compartment from two accessions of the plant *Arabidopsis thaliana*. We are interested in modeling the effect of fraction (soil, rhizosphere [R] and endophytic compartment [E]) as well as plant accession (Ler and Col), and their interaction. There is also a sequencing plate variable that will be ignored.
 
 ## Using the formula interface
 
-The simplest way to make a model is to use R's formula interface. Most R linear modeling functions use a function called `model.matrix()` to generate a design matrix that then goes into the fitted model. However, this function generates a design matrix where estimability constraints are imposes, meaning that coefficients that cannot be estimated due to linear dependencies are simply removed from the desing matrix. While this is good for the majority of models, it would eliminate one of the advantages of regularized models that can deal with overparametrized models. Because of this, `matrix_glmnet()` uses another function that generates the full overparametrized design matrix (more below).
+The simplest way to make a model is to use R's formula interface. Most R linear modeling functions use a function called `model.matrix()` to generate a design matrix that then goes into the fitted model. However, this function generates a [design matrix](https://en.wikipedia.org/wiki/Design_matrix) where estimability constraints are imposes, meaning that coefficients that cannot be estimated due to linear dependencies are simply removed from the desing matrix. While this is good for the majority of models, it would eliminate one of the advantages of regularized models that can deal with overparametrized models. Because of this, `matrix_glmnet()` uses another function that generates the full overparametrized design matrix (more below).
 
 Knowing all this we can simply write a simple formula for our case and run the following model:
 
@@ -38,7 +30,7 @@ Knowing all this we can simply write a simple formula for our case and run the f
 # Always set seed before using random numbers (like in permuations)
 set.seed(743)
 m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction * accession,
-                    nperm = 10, glmnet.offset = "depth", family = "poisson",
+                    nperm = 100, family = "poisson",
                     verbose = FALSE)
 ```
 
@@ -46,54 +38,60 @@ The previous line fits a model with terms for fraction, accession and their inte
 
 It is also important to remember that there are two steps that introduce randomness in the `matrix_glmnet()` function, one is the 10-fold cross-validation that help us pick lambda, and the second is the permutation test. So we must always use `set.seed()` before to ensure reproducible results.
 
-We can then look at the model results for one OTU with:
+Matrix glmnet produces a list with a bunch of information. The easiest way to make sense of the information, is to use the summary method to produce p-values for each coefficient based on the permutations performed. And then we can inspect the coefficients for an OTU of interest.
 
 ```{r model_results1}
-m1[ m1$Taxon == "OTU_2324", ]
+m1.sum <- summary(m1)
+subset(m1.sum$coefficients, Taxon == "OTU_19108")
 ```
-According to the model, there is a significant enrichment of this OTU in the root endophytic compartment of Col plants. Note that we haven't shown that this model is neccessarily appropriate here, nor will we. We will instead focus on the coefficient interpretation.
+According to the model, there is a significant enrichment of this OTU in the rhizosphere and in Col plants, as well as a significant positive interaction between in rhizosphere Col plants (fractionR:accessionCol). A quick inspection of the abundances for this OTU seems consitent with this:
 
-A careful look a the cofficients, will show that there are three variables that are identical: "fractionSoil", "accessionSoil" and "fractionSoil:accessionSoil" are all identical (meaning that the set of samples belonging to each of those class are exactly the same). When ridge regression models encounter variables that are highly correlated, they thry to evenly split the effect among all of them, which is why those three variables have very similar estimates. Unfortunately, this also means that if we want to know the true effect of soil, we need to add all three numbers together, which is not very convenient.
+```{r otu_plot}
+plotgg_taxon(Dat, "OTU_19108" , x = "fraction", col = "accession") 
+```
 
-It is also not clear that having a soil variable is such a good idea. The way it is, the fraction coefficients are the deviation of samples of a given type compared with the average sample, but Soil samples are independent from plants, wouldn't it be more biologically meaningfu l to have a model with soil as a baseline, and with fraction coefficients giving the deviation of each fraction from soil?.
+A careful look a the coefficients, will show that there are three variables that are identical: "fractionSoil", "accessionSoil" and "fractionSoil:accessionSoil".  The set of samples belonging to each of those class are exactly the same (have a look into the X element of the m1 object). When ridge regression models encounter variables that are highly correlated, they try to evenly split the effect among all of them, which is why those three variables have very similar estimates. But the downside is that we also split the power, and you can see that none of these variables makes the cut for significant.
 
-Unfortunately the formula interface doesn't allow us to easily change the model, and this type of problem happens when you have variables that are not completely crossed. Luckily, we can pass our custom desgin matrix as well.
+```{r show_soil_vars}
+subset(m1.sum$coefficients, Taxon == "OTU_19108" & Variable %in% c("fractionSoil","accessionSoil","fractionSoil:accessionSoil"))
+```
+
+It is also not clear that having a soil variable is such a good idea. The way it is, the fraction coefficients are the deviation of samples of a given type compared with the average sample, but R and E samples both come from a plant, while Soil samples don't come from any plant.
+
+It might be more biologically meaningful to have a model with soil as a baseline, and with fraction coefficients giving the deviation of each fraction from soil. Unfortunately the formula interface doesn't allow us to easily change the model, and this type of problem happens when you have variables that are not completely crossed. Luckily, we can pass our custom desgin matrix as well.
 
 ## Using a custom design matrix
+
+The easiest way to create a custom design matrix is to use the `overparametrized_modelmatrix()` function to generate the model with all the possible parameters, and then select from that design matrix the ones that we actually want to include. We can easily generate this desing matrix and see what variables are included with:
 
 ```{r full_matrix}
 X <- overparametrized_model.matrix(~ fraction * accession, data = Dat$Map, intercept = FALSE)
 colnames(X)
 ```
 
+As discussed above, we want to try a model were we set soil sample as the baseline for the comparison between the two types of plant samples, so we simply remove the three soil variables
+
 ```{r remove_soils}
 X <- X[,-c(1,6,11)]
 colnames(X)
 ```
 
+And we can fit the model again with a very similar syntax as before except that we pass the design matrix with `X = X` instead of a formula
+
 ```{r model_custom1}
+# Never forget to set seed for random numbers
 set.seed(743)
 m2 <- matrix_glmnet(Dat = Dat, X = X,
-                    nperm = 10, glmnet.offset = "depth", family = "poisson",
+                    nperm = 100, family = "poisson",
                     verbose = FALSE)
 ```
 
+And we can look at the results with:
+
 ```{r model_results2}
-m2[ m2$Taxon == "OTU_2324", ]
+m2.sum <- summary(m2)
+subset(m2.sum$coefficients, Taxon == "OTU_19108")
 ```
 
+Because soil abundance is the baseline for this coefficients, now we can clearly see that there is a rhizosphere specific enrichment of this OTU, while the abundance of the same OTU is not significantly different in E samples when compared to soil. Again we see that there is a significant enrichment in Col samples and there is a positive interaction between fractionR and accessionCol.
 
-```{r test}
-Tab.norm <- 100*scale(Dat$Tab,center = FALSE, scale = colSums(Dat$Tab))
-Dat.norm <- create_dataset(Tab.norm, Dat$Map)
-
-otus <- unique(m2$Taxon)
-i <- 3
-i <- which(otus == "OTU_18380")
-m1[ m1$Taxon == otus[i], ]
-m2[ m2$Taxon == otus[i], ]
-plotgg_taxon(Dat.norm, taxon = otus[i], x = "fraction", col = "accession") + scale_y_sqrt()
-``
-
-
-m2[ m2$p.value <= 0.1,]
