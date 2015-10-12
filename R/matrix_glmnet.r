@@ -103,10 +103,11 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   library(AMORglmnet)
   data(Rhizo.map)
   data(Rhizo)
-  Dat <- create_dataset(((Rhizo > 0)*1)[1:10,],Rhizo.map)
+  #Dat <- create_dataset(((Rhizo > 0)*1)[1:10,],Rhizo.map)
+  Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
   Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
   formula <- ~ fraction
-  family <- "binomial"
+  family <- "poisson"
   alpha <- 0
   nperm <- 10
   plot <- FALSE
@@ -181,21 +182,16 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   
   sample.replace <- FALSE
   
-  RES <- NULL
-  
-  
-  REPS <- matrix(NA, nrow = nrow(true.coefs), ncol = nperm)
-  row.names(REPS) <- row.names(coef)
-  
+  REPS <- NULL
   cat("Performing permutations...\n")
-  for(i in 1:nperms){
-    i <- 1
+  for(i in 1:nperm){
+    #i <- 1
     
     # Get permuted index
     Y.perm.index <- sample(ncol(Dat$Tab),replace = sample.replace)
     
     for(otu in row.names(Dat$Tab)){
-      otu <- row.names(Dat$Tab)[1]
+      #otu <- row.names(Dat$Tab)[1]
       #otu <- "OTU_16233"
       #if(verbose) cat(otu,"\n")
     
@@ -207,28 +203,26 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
       
       # Store permutation results
       coef.perm <- coef(m2)
-      REPS[,i] <- coef.perm[,1]
-      }
-    
+      REPS[[otu]] <- cbind(REPS[[otu]],coef.perm[,1])
+    }
   }
   
+  # FOR THE FUTURE NOT SUPPORTED NOW.
+  if(plot){
+    dat <- melt(PERMS)
+    names(dat) <- c("Coefficient","Permutation","Estimate")
+    dat$Type <- "Permutation"
+    dat <- rbind(dat,
+                 data.frame(Coefficient = row.names(coef),
+                            Permutation = NA, Estimate = coef[,1],
+                            Type = "Estimate"))
     
-    # FOR THE FUTURE NOT SUPPORTED NOW.
-    if(plot){
-      dat <- melt(PERMS)
-      names(dat) <- c("Coefficient","Permutation","Estimate")
-      dat$Type <- "Permutation"
-      dat <- rbind(dat,
-                   data.frame(Coefficient = row.names(coef),
-                              Permutation = NA, Estimate = coef[,1],
-                              Type = "Estimate"))
-      
-      p1 <- ggplot(dat,aes(x = Estimate)) +
-        facet_wrap(~ Coefficient, scales = "fixed") +
-        geom_density(data = subset(dat, Type == "Permutation"), aes(x = Estimate)) +
-        geom_vline(data = subset(dat, Type == "Estimate"), aes(xintercept = Estimate), col = "red") +
-        theme
-      #p1
+    p1 <- ggplot(dat,aes(x = Estimate)) +
+      facet_wrap(~ Coefficient, scales = "fixed") +
+      geom_density(data = subset(dat, Type == "Permutation"), aes(x = Estimate)) +
+      geom_vline(data = subset(dat, Type == "Estimate"), aes(xintercept = Estimate), col = "red") +
+      theme
+    #p1
     }
     
     # Get p-values and update results
