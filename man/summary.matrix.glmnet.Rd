@@ -5,13 +5,17 @@
 \title{Sumarize matrix_glmnet fit}
 \usage{
 \method{summary}{matrix.glmnet}(object, quantile.probs = c(0.01, 0.025, 0.5,
-  0.975, 0.99))
+  0.975, 0.99), funlist = NULL)
 }
 \arguments{
 \item{object}{Object from class \code{matrix.glmnet} as produced by \link{matrix_glmnet}.}
 
 \item{quantile.probs}{Quantiles to be calculated from bootstrap. Only used if the method
 element in \code{object} is bootstrap.}
+
+\item{funlist}{A list of function to be tested on the list of coefficients. Each function
+must take a single numeric vector, and return a single numeric value. Preferentially, the
+list should be named, otherwise functions will be identified by they numeric indices.}
 }
 \description{
 This function takes a model fit with \link{matrix_glmnet} and calculates a series of
@@ -22,13 +26,28 @@ data(Rhizo)
 data(Rhizo.map)
 Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
 
+# Fit model and permute 100 times to estimate null.
+# All the code below should also work if method is changed to "bootstrap"
 set.seed(743)
 m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction,
                    nperm = 100, family = "poisson",
                    method = "permutation",
                    verbose = FALSE)
+
+# Performs permutation test
 m1.sum <- summary(m1)
 m1.sum$coefficients
+
+# We can add a function that tests wheather the mean if R and E
+# samples is different than the soil
+mytestfun <- function(x) {x[2] - mean(x[3],x[4])}
+
+# Following command repeats the permutation test, and tests also
+# wheter the value of the new function is significant
+m1.sum <- summary(m1,funlist = list(mytest = mytestfun))
+
+# The results are stored in the functions element
+m1.sum$functions
 }
 \author{
 Sur from Dangl lab

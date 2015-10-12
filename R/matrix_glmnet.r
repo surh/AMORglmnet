@@ -37,73 +37,62 @@
 #' @param plot Currently not implemented. The funciton contains code for
 #' plotting null distributions of parameters and observed values.
 #' Might eventually be an independent function.
-#' @param quantile.probs Probabilites for quantile calculation. See probs in \link{quantile}.
 #' @param theme ggplot2 theme for plots.
 #' @param verbose Logical indicating if progress should be printed
 #' 
 #' @return
-#' \item{Variable}{Variable name.}
-#' \item{Taxon}{Taxon for which the model was fit.}
-#' \item{Estimate}{Coefficient value estimate.}
-#' \item{p.value}{tow-tailed p-value from permutation.}
-#' \item{lambda}{lambda value chosen via cross-validation}
+#' Returns a list with the following elements
+#' \item{X}{Design matrix}
+#' \item{coeffcients}{Matrix of coefficients per taxon}
+#' \item{lambda}{Vector of lambda values per taxon}
+#' \item{method}{Method used for the replicates}
+#' \item{family}{Model family}
+#' \item{nreps}{Number of replicates performed}
+#' \item{call}{Function call}
+#' \item{formula}{model formula}
+#' \item{samples}{List of coefficiente matrices per OTU and replicate}
 #' 
 #' @author Sur from Dangl Lab
 #' 
 #' @examples
+#' # Load data
 #' data(Rhizo)
 #' data(Rhizo.map)
-#' data(Rhizo.tax)
-#' Dat <- create_dataset((Rhizo > 0)*1,Rhizo.map,Rhizo.tax)
+#' 
+#' # Create dataset with the first 10 OTUS
+
+#' Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
 #' 
 #' # Always set seed before using random numbers (like in permuations)
 #' set.seed(743)
 #' m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction + accession,
-#'                     nperm = 100)
+#'                     nperm = 100,family = "poisson")
 #'
+#' # Use summary function to obtain statistics
+#' m1.sum <- summary(m1)
 #' # See distribution of pvalues behaves as expectee
-#' hist(m1$p.values)
+#' hist(m1.sum$coefficients$p.value)
 #' 
+#' # Use bootstrap instead
+#' m1 <- matrix_glmnet(Dat = Dat, formula = ~ fraction + accession,
+#'                     nperm = 100,family = "poisson", method ="bootstrap")
 #' 
-#' # Look for genotype specific differences
-#' m1[ m1$Variable == "accessionLer" & m1$p.value < 0.1, ]
+#' # Use summary function to obtain statistics
+#' m1.sum <- summary(m1)
 #' 
-#' #plot one of them
-#' p1 <- plotgg_taxon(Dat, taxon = "OTU_2324", x = "accession")
-#' dat <- data.frame(accession = levels(p1$data$accession),
-#'                   value = tapply(p1$data$Abundance,
-#'                   p1$data$accession,mean),
-#'                   Group = "Presence")
-#' 
-#' dat <- rbind(dat,
-#'              data.frame(accession = levels(p1$data$accession), 
-#'                         value = 1 - dat$value,
-#'                         Group = "Absence"))
-#' ggplot(dat,aes(x = accession, y = value, fill = Group)) +
-#'   geom_bar(stat = "identity", position = "fill") + 
-#'   scale_fill_manual(values = c("black","white")) +
+#' # Visualizing coefficientw with ggplot requires a bit of rearrangement because
+#' # the percent symbol in the column names causes trouble
+#' dat <- subset(m1.sum$coefficients, Taxon == "OTU_14834")
+#' dat$lower <- dat[,"2.5%"]
+#' dat$upper <- dat[,"97.5%"]
+#' p1 <- ggplot(dat,aes(x = lower, y = Variable)) +
+#'   geom_segment(aes(xend = upper,yend = Variable)) +
+#'   geom_vline(xintercept = 0, col = 'red') +
 #'   theme_blackbox
-#' 
-#' 
-#' # Now for EC enrichments
-#' m1[ m1$Variable == "fractionE" & m1$p.value < 0.01 & m1$Estimate < -3, ]
-#' p1 <- plotgg_taxon(Dat, taxon = "OTU_16757", x = "fraction")
-#' dat <- data.frame(fraction = levels(p1$data$fraction),
-#'                   value = tapply(p1$data$Abundance,
-#'                   p1$data$fraction,mean),
-#'                   Group = "Presence")
-#' dat <- rbind(dat,
-#'              data.frame(fraction = levels(p1$data$fraction),
-#'                         value = 1 - dat$value,
-#'                         Group = "Absence"))
-#' ggplot(dat,aes(x = fraction, y = value, fill = Group)) +
-#'   geom_bar(stat = "identity", position = "fill") +
-#'   scale_fill_manual(values = c("black","white")) +
-#'   theme_blackbox
+#' p1
 matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", alpha = 0,
                           glmnet.intercept = TRUE, glmnet.offset = NULL, method = "permutation",
                           nperm = 1000, nboot = nperm, plot = FALSE,
-                          quantile.probs = c(0.01,0.025,0.5,0.975,0.99),
                           theme = theme_blackbox, verbose = TRUE){
   
   # Checking user parameters
