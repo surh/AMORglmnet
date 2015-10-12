@@ -6,7 +6,9 @@
 \usage{
 matrix_glmnet(Dat, X = NULL, formula = NULL, family = "binomial",
   alpha = 0, glmnet.intercept = TRUE, glmnet.offset = NULL,
-  nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE)
+  method = "permutation", nperm = 1000, nboot = nperm, plot = FALSE,
+  quantile.probs = c(0.01, 0.025, 0.5, 0.975, 0.99), theme = theme_blackbox,
+  verbose = TRUE)
 }
 \arguments{
 \item{Dat}{A Dataset object.}
@@ -36,11 +38,18 @@ Note that family multinomial takes a matrix as offset, while passing a vector of
 variable names should work, note that this has not been tested and might produce
 incorrect results. The function will print a warning if you try to do this.}
 
-\item{nperm}{Number of permutations to perfomr.}
+\item{method}{Either "permuation" or "bootstrap". The default and preferred method is
+permutation.}
+
+\item{nperm}{Number of permutations to perform.}
+
+\item{nboot}{Number of bootstrap pseudo replicates to perform.}
 
 \item{plot}{Currently not implemented. The funciton contains code for
 plotting null distributions of parameters and observed values.
 Might eventually be an independent function.}
+
+\item{quantile.probs}{Probabilites for quantile calculation. See probs in \link{quantile}.}
 
 \item{theme}{ggplot2 theme for plots.}
 

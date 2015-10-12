@@ -30,10 +30,14 @@
 #' Note that family multinomial takes a matrix as offset, while passing a vector of
 #' variable names should work, note that this has not been tested and might produce
 #' incorrect results. The function will print a warning if you try to do this.
-#' @param nperm Number of permutations to perfomr.
+#' @param method Either "permuation" or "bootstrap". The default and preferred method is
+#' permutation.
+#' @param nperm Number of permutations to perform.
+#' @param nboot Number of bootstrap pseudo replicates to perform.
 #' @param plot Currently not implemented. The funciton contains code for
 #' plotting null distributions of parameters and observed values.
 #' Might eventually be an independent function.
+#' @param quantile.probs Probabilites for quantile calculation. See probs in \link{quantile}.
 #' @param theme ggplot2 theme for plots.
 #' @param verbose Logical indicating if progress should be printed
 #' 
@@ -97,26 +101,10 @@
 #'   scale_fill_manual(values = c("black","white")) +
 #'   theme_blackbox
 matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", alpha = 0,
-                          glmnet.intercept = TRUE, glmnet.offset = NULL,
-                          nperm = 1000, plot = FALSE, theme = theme_blackbox, verbose = TRUE){
-  
-  #library(AMORglmnet)
-  #data(Rhizo.map)
-  #data(Rhizo)
-  #Dat <- create_dataset(((Rhizo > 0)*1)[1:10,],Rhizo.map)
-  #Dat <- create_dataset(Rhizo[1:10,],Rhizo.map)
-  #Dat$Map$rich <- colSums(Dat$Tab) / nrow(Dat$Tab)
-  #formula <- ~ fraction
-  #family <- "poisson"
-  #alpha <- 0
-  #nperm <- 10
-  #plot <- FALSE
-  #theme <- theme_blackbox
-  #X <- NULL
-  #glmnet.intercept <- TRUE
-  #glmnet.offset <- Dat$Map$rich
-  #verbose <- TRUE
-  #set.seed(124)
+                          glmnet.intercept = TRUE, glmnet.offset = NULL, method = "permutation",
+                          nperm = 1000, nboot = nperm, plot = FALSE,
+                          quantile.probs = c(0.01,0.025,0.5,0.975,0.99),
+                          theme = theme_blackbox, verbose = TRUE){
   
   # Checking user parameters
   if(alpha != 0){
@@ -130,6 +118,15 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
   
   if(is.null(X) && is.null(formula)){
     stop("ERROR: One of X and formula must be not null\n",call. = TRUE)
+  }
+  
+  if(method == "permutation"){
+    sample.replace <- FALSE
+  }else if(method == "bootstrap"){
+    sample.replace <- TRUE
+    nperm <- nboot
+  }else{
+    stop("ERROR: method not valid. Only permutation or bootsrap allowed",call. = TRUE)
   }
   
   # If we get a character we assume it is the name of a variable in map
@@ -180,8 +177,6 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     true.coefs <- cbind(true.coefs,as.matrix(coef))
   }
   
-  sample.replace <- FALSE
-  
   REPS <- NULL
   cat("Performing permutations...\n")
   for(i in 1:nperm){
@@ -225,14 +220,27 @@ matrix_glmnet <- function(Dat, X = NULL, formula = NULL, family = "binomial", al
     #p1
   }
   
-  # Formate output and calculate p-values
+  # Format output and calculate p-values
   RES <- melt(data = true.coefs, varnames = c("Variable","Taxon"),value.name = "Estimate")
-  RES$p.value <- NA
-  RES$lambda <- NA
-  for(otu in row.names(Dat$Tab)){
-    pvals <- rowSums(abs(true.coefs[,otu] / REPS[[otu]]) <= 1) / nperm
-    RES$p.value[ RES$Taxon == otu ] <- pvals
-    RES$lambda[ RES$Taxon == otu ] <- lambda.otu[otu]
+  if(method == "permutation"){
+    RES$p.value <- NA
+    RES$lambda <- NA
+    for(otu in row.names(Dat$Tab)){
+      pvals <- rowSums(abs(true.coefs[,otu] / REPS[[otu]]) <= 1) / nperm
+      RES$p.value[ RES$Taxon == otu ] <- pvals
+      RES$lambda[ RES$Taxon == otu ] <- lambda.otu[otu]
+    } 
+  }else if(method == "bootstrap"){
+    Res <- NULL
+    for(otu in row.names(Dat$Tab)){
+      quants <- apply(REPS[[otu]],1,quantile,probs = quantile.probs)
+      quants <- as.data.frame(t(quants))
+      quants$lambda <- lambda.otu[otu]
+      #quants$otu  <- otu
+      
+      Res <- rbind(Res,quants)
+    }
+    RES <- cbind(RES,Res)
   }
   
   # Finish
