@@ -3,8 +3,9 @@ Type: Package
 Title: Plugin to use glmnet models with AMOR
 Version: 0.0-1
 Depends: AMOR (>= 0.0-12), glmnet(>= 1.9-8)
-Date: 2015-03-12
+Date: 2015-10-12
 Author: Sur
 Maintainer: Sur <sur00mx@gmail.com>
 Description: Plugin to use glmnet models with AMOR
+VignetteBuilder: knitr
 License: GPL-3

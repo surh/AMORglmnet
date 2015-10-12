@@ -1,4 +1,7 @@
+<!--
 %\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Specifying your design matrix}
+-->
 ---
 title: "Specifying your design matrix"
 author: "Sur Herrera Paredes"
